@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::{CreateWalletRequest, WalletResponse},
+        dto::{CreateWalletRequest, WalletAmountRequest, WalletResponse},
         state::AppState,
     },
     errors::AppError,
@@ -50,5 +50,39 @@ pub async fn get_wallet_by_user_id(
     }
 
     let wallet = state.wallet_service.get_wallet_by_user_id(user_id).await?;
+    Ok(Json(wallet.into()))
+}
+
+fn parse_amount(amount_str: &str) -> Result<Decimal, AppError> {
+    Decimal::from_str(amount_str).map_err(|_| AppError::InvalidAmountFormat)
+}
+
+pub async fn deposit(
+    State(state): State<AppState>,
+    Path(wallet_id): Path<Uuid>,
+    Json(payload): Json<WalletAmountRequest>,
+) -> Result<Json<WalletResponse>, AppError> {
+    if wallet_id.is_nil() {
+        return Err(AppError::InvalidWalletId);
+    }
+
+    let amount = parse_amount(&payload.amount)?;
+
+    let wallet = state.wallet_service.deposit(wallet_id, amount).await?;
+    Ok(Json(wallet.into()))
+}
+
+pub async fn withdraw(
+    State(state): State<AppState>,
+    Path(wallet_id): Path<Uuid>,
+    Json(payload): Json<WalletAmountRequest>,
+) -> Result<Json<WalletResponse>, AppError> {
+    if wallet_id.is_nil() {
+        return Err(AppError::InvalidWalletId);
+    }
+
+    let amount = parse_amount(&payload.amount)?;
+
+    let wallet = state.wallet_service.withdraw(wallet_id, amount).await?;
     Ok(Json(wallet.into()))
 }

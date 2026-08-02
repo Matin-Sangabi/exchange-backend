@@ -32,7 +32,7 @@ impl Application {
         let wallet_repository: Arc<dyn WalletRepository> =
             Arc::new(PostgresWalletRepository::new(database_pool.clone()));
 
-        let wallet_service = WalletService::new(wallet_repository);
+        let wallet_service = WalletService::new(wallet_repository, database_pool.clone());
 
         let state = AppState::new(wallet_service);
 

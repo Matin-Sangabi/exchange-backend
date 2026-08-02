@@ -70,4 +70,36 @@ impl Wallet {
     pub fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
+
+    pub fn deposit(&mut self, amount: Decimal) -> Result<(), AppError> {
+        if amount <= Decimal::ZERO {
+            return Err(AppError::InvalidAmount);
+        }
+
+        self.cash_balance = self
+            .cash_balance
+            .checked_add(amount)
+            .ok_or(AppError::BalanceOverflow)?;
+        self.updated_at = Utc::now();
+
+        Ok(())
+    }
+
+    pub fn withdraw(&mut self, amount: Decimal) -> Result<(), AppError> {
+        if amount <= Decimal::ZERO {
+            return Err(AppError::InvalidAmount);
+        }
+
+        if self.cash_balance < amount {
+            return Err(AppError::InsufficientBalance);
+        }
+
+        self.cash_balance = self
+            .cash_balance
+            .checked_sub(amount)
+            .ok_or(AppError::BalanceOverflow)?;
+        self.updated_at = Utc::now();
+
+        Ok(())
+    }
 }

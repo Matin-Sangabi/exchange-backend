@@ -29,6 +29,18 @@ pub enum AppError {
 
     #[error("Database operation failed")]
     Database(#[from] sqlx::Error),
+
+    #[error("Amount must be greater than zero")]
+    InvalidAmount,
+
+    #[error("Amount must be a valid decimal number")]
+    InvalidAmountFormat,
+
+    #[error("Wallet balance is insufficient")]
+    InsufficientBalance,
+
+    #[error("Wallet balance overflow")]
+    BalanceOverflow,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +94,32 @@ impl IntoResponse for AppError {
                 "Wallet was not found",
             ),
 
+            AppError::InvalidAmount => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_AMOUNT",
+                "Amount must be greater than zero",
+            ),
+            AppError::InvalidAmountFormat => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_AMOUNT_FORMAT",
+                "Amount must be a valid decimal string",
+            ),
+
+            AppError::InsufficientBalance => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INSUFFICIENT_BALANCE",
+                "Wallet balance is insufficient",
+            ),
+
+            AppError::BalanceOverflow => {
+                error!("Wallet balance overflow");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "BALANCE_OVERFLOW",
+                    "Wallet balance could not be updated",
+                )
+            }
             AppError::Database(database_error) => {
                 error!(
                     error = ?database_error,

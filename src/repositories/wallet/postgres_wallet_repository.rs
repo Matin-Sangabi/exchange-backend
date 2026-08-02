@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::{PgPool, prelude::FromRow};
+use sqlx::{PgConnection, PgPool, prelude::FromRow};
 use uuid::Uuid;
 
 use crate::{
@@ -119,5 +119,58 @@ impl WalletRepository for PostgresWalletRepository {
         .await?;
 
         Ok(row.map(Into::into))
+    }
+
+    async fn find_by_id_for_update(
+        &self,
+        connection: &mut PgConnection,
+        wallet_id: Uuid,
+    ) -> Result<Option<Wallet>, AppError> {
+        let row = sqlx::query_as::<_, WalletRow>(
+            r#"
+        SELECT
+            id,
+            user_id,
+            cash_balance,
+            created_at,
+            updated_at
+        FROM wallets
+        WHERE id = $1
+        FOR UPDATE
+        "#,
+        )
+        .bind(wallet_id)
+        .fetch_optional(connection)
+        .await?;
+
+        Ok(row.map(Into::into))
+    }
+    async fn update(
+        &self,
+        connection: &mut PgConnection,
+        wallet: &Wallet,
+    ) -> Result<Wallet, AppError> {
+        let row = sqlx::query_as::<_, WalletRow>(
+            r#"
+        UPDATE wallets
+        SET
+            cash_balance = $2,
+            updated_at = $3
+        WHERE id = $1
+        RETURNING
+            id,
+            user_id,
+            cash_balance,
+            created_at,
+            updated_at
+        "#,
+        )
+        .bind(wallet.id())
+        .bind(wallet.cash_balance())
+        .bind(wallet.updated_at())
+        .fetch_optional(connection)
+        .await?;
+
+        row.map(Into::into).ok_or(AppError::WalletNotFound)
     }
 }

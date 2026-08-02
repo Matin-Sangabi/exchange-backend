@@ -31,3 +31,8 @@ impl From<Wallet> for WalletResponse {
         }
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct WalletAmountRequest {
+    pub amount: String,
+}

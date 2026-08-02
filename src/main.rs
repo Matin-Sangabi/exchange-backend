@@ -12,7 +12,7 @@ mod utils;
 use anyhow::Result;
 use tracing::{error, info};
 
-use crate::{app::Application, config::AppConfig, utils::tracing::init_tracing, };
+use crate::{app::Application, config::AppConfig, utils::tracing::init_tracing};
 
 async fn run() -> Result<()> {
     let config = AppConfig::load()?;

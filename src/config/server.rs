@@ -25,6 +25,4 @@ impl ServerConfig {
             .context("PORT must be valid number between 0 and 65365")?;
         Ok(Self { host, port })
     }
-
-    
 }
