@@ -68,6 +68,27 @@ pub enum AppError {
 
     #[error("Asset balance overflow")]
     AssetBalanceOverflow,
+
+    #[error("Market symbol is invalid")]
+    InvalidMarketSymbol,
+
+    #[error("Base and quote assets must be different")]
+    SameMarketAssets,
+
+    #[error("Market price must be greater than zero")]
+    InvalidMarketPrice,
+
+    #[error("Market price has not been set")]
+    MarketPriceNotSet,
+
+    #[error("Market already exists")]
+    MarketAlreadyExists,
+
+    #[error("Market was not found")]
+    MarketNotFound,
+
+    #[error("Invalid market status")]
+    InvalidMarketStatus,
 }
 
 #[derive(Debug, Serialize)]
@@ -205,6 +226,53 @@ impl IntoResponse for AppError {
                     "Wallet balance could not be updated",
                 )
             }
+
+            AppError::InvalidMarketSymbol => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_MARKET_SYMBOL",
+                "Market assets must contain valid alphanumeric symbols",
+            ),
+
+            AppError::SameMarketAssets => (
+                StatusCode::BAD_REQUEST,
+                "SAME_MARKET_ASSETS",
+                "Base and quote assets must be different",
+            ),
+
+            AppError::InvalidMarketPrice => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_MARKET_PRICE",
+                "Market price must be greater than zero",
+            ),
+
+            AppError::MarketPriceNotSet => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "MARKET_PRICE_NOT_SET",
+                "The market price has not been set",
+            ),
+
+            AppError::MarketAlreadyExists => (
+                StatusCode::CONFLICT,
+                "MARKET_ALREADY_EXISTS",
+                "This market already exists",
+            ),
+
+            AppError::MarketNotFound => (
+                StatusCode::NOT_FOUND,
+                "MARKET_NOT_FOUND",
+                "Market was not found",
+            ),
+
+            AppError::InvalidMarketStatus => {
+                error!("Invalid market status stored in database");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INVALID_MARKET_STATUS",
+                    "An invalid market status was encountered",
+                )
+            }
+
             AppError::Database(database_error) => {
                 error!(
                     error = ?database_error,

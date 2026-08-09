@@ -10,11 +10,12 @@ use crate::{
     config::AppConfig,
     database::{check_database_health, create_database_pool, migrations::run_migrations},
     repositories::{
+        market::{MarketRepository, PostgresMarketRepository},
         wallet::{PostgresWalletRepository, WalletRepository},
         wallet_asset::{PostgresWalletAssetRepository, WalletAssetRepository},
         wallet_transaction::{PostgresWalletTransactionRepository, WalletTransactionRepository},
     },
-    services::{WalletAssetService, WalletService},
+    services::{MarketService, WalletAssetService, WalletService},
 };
 
 pub struct Application {
@@ -40,6 +41,9 @@ impl Application {
             PostgresWalletTransactionRepository::new(database_pool.clone()),
         );
 
+        let market_repositories: Arc<dyn MarketRepository> =
+            Arc::new(PostgresMarketRepository::new(database_pool.clone()));
+
         let wallet_asset_repository: Arc<dyn WalletAssetRepository> =
             Arc::new(PostgresWalletAssetRepository::new(database_pool.clone()));
 
@@ -55,7 +59,9 @@ impl Application {
             wallet_asset_repository,
         );
 
-        let state = AppState::new(wallet_service, wallet_asset_service);
+        let market_service = MarketService::new(market_repositories);
+
+        let state = AppState::new(wallet_service, wallet_asset_service, market_service);
 
         info!(
             application = %config.app_name,
