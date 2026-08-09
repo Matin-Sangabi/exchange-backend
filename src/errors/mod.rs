@@ -41,6 +41,33 @@ pub enum AppError {
 
     #[error("Wallet balance overflow")]
     BalanceOverflow,
+
+    #[error("Invalid reference id")]
+    InvalidReferenceId,
+
+    #[error("Description must be less than 255 char ")]
+    DescriptionTooLong,
+
+    #[error("The transaction reference already exists")]
+    DuplicateTransactionReference,
+
+    #[error("Wallet transaction not found")]
+    WalletTransactionNotFound,
+
+    #[error("Asset symbol is invalid")]
+    InvalidAssetSymbol,
+
+    #[error("Asset balance is insufficient")]
+    InsufficientAssetBalance,
+
+    #[error("Wallet asset was not found")]
+    WalletAssetNotFound,
+
+    #[error("Wallet asset already exists")]
+    WalletAssetAlreadyExists,
+
+    #[error("Asset balance overflow")]
+    AssetBalanceOverflow,
 }
 
 #[derive(Debug, Serialize)]
@@ -110,6 +137,64 @@ impl IntoResponse for AppError {
                 "INSUFFICIENT_BALANCE",
                 "Wallet balance is insufficient",
             ),
+
+            AppError::InvalidReferenceId => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INVALID_REFERENCE_ID",
+                "reference id  is insufficient",
+            ),
+
+            AppError::DescriptionTooLong => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "DESCRIPTION_TO_LONG",
+                "description too long !",
+            ),
+
+            AppError::DuplicateTransactionReference => (
+                StatusCode::CONFLICT,
+                "DUPLICATE_TRANSACTION_REFERENCE",
+                "This financial operation has already been processed",
+            ),
+
+            AppError::WalletTransactionNotFound => (
+                StatusCode::NOT_FOUND,
+                "WALLET_TRANSACTION_NOT_FOUND",
+                "Wallet transaction was not found",
+            ),
+
+            AppError::InvalidAssetSymbol => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_ASSET_SYMBOL",
+                "Asset symbol must contain only valid uppercase characters",
+            ),
+
+            AppError::InsufficientAssetBalance => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INSUFFICIENT_ASSET_BALANCE",
+                "Wallet asset balance is insufficient",
+            ),
+
+            AppError::WalletAssetNotFound => (
+                StatusCode::NOT_FOUND,
+                "WALLET_ASSET_NOT_FOUND",
+                "Wallet asset was not found",
+            ),
+
+            AppError::WalletAssetAlreadyExists => (
+                StatusCode::CONFLICT,
+                "WALLET_ASSET_ALREADY_EXISTS",
+                "This asset already exists in the wallet",
+            ),
+
+            AppError::AssetBalanceOverflow => {
+                error!("Wallet asset balance overflow");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "ASSET_BALANCE_OVERFLOW",
+                    "Wallet asset balance could not be updated",
+                )
+            }
 
             AppError::BalanceOverflow => {
                 error!("Wallet balance overflow");

@@ -2,15 +2,19 @@ use std::str::FromStr;
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
 };
 use rust_decimal::Decimal;
+use sqlx::query;
 use uuid::Uuid;
 
 use crate::{
     api::{
-        dto::{CreateWalletRequest, WalletAmountRequest, WalletResponse},
+        dto::{
+            CreateWalletRequest, TransactionListQuery, WalletAmountRequest, WalletResponse,
+            WalletTransactionListResponse, WalletTransactionResponse,
+        },
         state::AppState,
     },
     errors::AppError,
@@ -68,7 +72,10 @@ pub async fn deposit(
 
     let amount = parse_amount(&payload.amount)?;
 
-    let wallet = state.wallet_service.deposit(wallet_id, amount).await?;
+    let wallet = state
+        .wallet_service
+        .deposit(wallet_id, amount, payload.reference_id, payload.description)
+        .await?;
     Ok(Json(wallet.into()))
 }
 
@@ -83,6 +90,34 @@ pub async fn withdraw(
 
     let amount = parse_amount(&payload.amount)?;
 
-    let wallet = state.wallet_service.withdraw(wallet_id, amount).await?;
+    let wallet = state
+        .wallet_service
+        .withdraw(wallet_id, amount, payload.reference_id, payload.description)
+        .await?;
     Ok(Json(wallet.into()))
+}
+
+pub async fn get_wallet_transaction(
+    State(state): State<AppState>,
+    Path(wallet_id): Path<Uuid>,
+    Query(query): Query<TransactionListQuery>,
+) -> Result<Json<WalletTransactionListResponse>, AppError> {
+    let page = query.page.max(1);
+    let per_page = query.per_page.clamp(1, 100);
+
+    let transactions = state
+        .wallet_service
+        .get_wallet_transactions(wallet_id, page, per_page)
+        .await?;
+
+    let items = transactions
+        .into_iter()
+        .map(WalletTransactionResponse::from)
+        .collect();
+
+    Ok(Json(WalletTransactionListResponse {
+        page,
+        per_page,
+        items,
+    }))
 }

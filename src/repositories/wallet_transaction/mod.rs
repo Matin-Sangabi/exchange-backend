@@ -1,0 +1,6 @@
+pub mod postgres_wallet_transaction_repository;
+pub mod wallet_transaction;
+
+pub use postgres_wallet_transaction_repository::PostgresWalletTransactionRepository;
+
+pub use wallet_transaction::WalletTransactionRepository;

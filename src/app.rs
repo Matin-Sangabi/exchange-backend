@@ -9,8 +9,12 @@ use crate::{
     api::{AppState, create_router},
     config::AppConfig,
     database::{check_database_health, create_database_pool, migrations::run_migrations},
-    repositories::wallet::{PostgresWalletRepository, WalletRepository},
-    services::WalletService,
+    repositories::{
+        wallet::{PostgresWalletRepository, WalletRepository},
+        wallet_asset::{PostgresWalletAssetRepository, WalletAssetRepository},
+        wallet_transaction::{PostgresWalletTransactionRepository, WalletTransactionRepository},
+    },
+    services::{WalletAssetService, WalletService},
 };
 
 pub struct Application {
@@ -32,9 +36,26 @@ impl Application {
         let wallet_repository: Arc<dyn WalletRepository> =
             Arc::new(PostgresWalletRepository::new(database_pool.clone()));
 
-        let wallet_service = WalletService::new(wallet_repository, database_pool.clone());
+        let transaction_repository: Arc<dyn WalletTransactionRepository> = Arc::new(
+            PostgresWalletTransactionRepository::new(database_pool.clone()),
+        );
 
-        let state = AppState::new(wallet_service);
+        let wallet_asset_repository: Arc<dyn WalletAssetRepository> =
+            Arc::new(PostgresWalletAssetRepository::new(database_pool.clone()));
+
+        let wallet_service = WalletService::new(
+            database_pool.clone(),
+            wallet_repository.clone(),
+            transaction_repository,
+        );
+
+        let wallet_asset_service = WalletAssetService::new(
+            database_pool.clone(),
+            wallet_repository,
+            wallet_asset_repository,
+        );
+
+        let state = AppState::new(wallet_service, wallet_asset_service);
 
         info!(
             application = %config.app_name,

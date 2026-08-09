@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS markets;
+DROP TYPE IF EXISTS market_status;
