@@ -6,7 +6,6 @@ use axum::{
     http::StatusCode,
 };
 use rust_decimal::Decimal;
-use sqlx::query;
 use uuid::Uuid;
 
 use crate::{

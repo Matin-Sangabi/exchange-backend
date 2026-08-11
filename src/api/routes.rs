@@ -1,15 +1,16 @@
 use axum::{
     Router,
-    routing::{get, post, put},
+    routing::{get, post},
 };
 
 use tower_http::trace::TraceLayer;
 
 use crate::api::{
     handlers::{
-        create_market, create_wallet, deposit, deposit_wallet_asset, get_market, get_market_price,
-        get_markets, get_wallet_asset, get_wallet_assets, get_wallet_by_id, get_wallet_by_user_id,
-        get_wallet_transaction, health, set_market_price, withdraw, withdraw_wallet_asset,
+        create_market, create_order, create_wallet, deposit, deposit_wallet_asset, get_market,
+        get_market_price, get_markets, get_order, get_price, get_user_orders, get_wallet_asset,
+        get_wallet_assets, get_wallet_by_id, get_wallet_by_user_id, get_wallet_transaction, health,
+        set_market_price, withdraw, withdraw_wallet_asset,
     },
     state::AppState,
 };
@@ -42,11 +43,20 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/markets/{symbol}/price",
             get(get_market_price).put(set_market_price),
-        );
+        )
+        .route("/markets/price/{symbol}", get(get_price));
+
+    let order_routes = Router::new()
+        .route("/orders", post(create_order))
+        .route("/orders/{order_id}", get(get_order))
+        .route("/orders/user/{user_id}", get(get_user_orders));
 
     Router::new()
         .route("/health", get(health))
-        .nest("/api/v1", wallet_routes.merge(market_routes))
+        .nest(
+            "/api/v1",
+            wallet_routes.merge(market_routes).merge(order_routes),
+        )
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }

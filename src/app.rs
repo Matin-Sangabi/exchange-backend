@@ -11,11 +11,12 @@ use crate::{
     database::{check_database_health, create_database_pool, migrations::run_migrations},
     repositories::{
         market::{MarketRepository, PostgresMarketRepository},
+        orders::{OrderRepository, PostgresOrderRepository},
         wallet::{PostgresWalletRepository, WalletRepository},
         wallet_asset::{PostgresWalletAssetRepository, WalletAssetRepository},
         wallet_transaction::{PostgresWalletTransactionRepository, WalletTransactionRepository},
     },
-    services::{MarketService, WalletAssetService, WalletService},
+    services::{MarketService, OrderService, WalletAssetService, WalletService},
 };
 
 pub struct Application {
@@ -47,6 +48,9 @@ impl Application {
         let wallet_asset_repository: Arc<dyn WalletAssetRepository> =
             Arc::new(PostgresWalletAssetRepository::new(database_pool.clone()));
 
+        let order_repositories: Arc<dyn OrderRepository> =
+            Arc::new(PostgresOrderRepository::new(database_pool.clone()));
+
         let wallet_service = WalletService::new(
             database_pool.clone(),
             wallet_repository.clone(),
@@ -55,13 +59,20 @@ impl Application {
 
         let wallet_asset_service = WalletAssetService::new(
             database_pool.clone(),
-            wallet_repository,
+            wallet_repository.clone(),
             wallet_asset_repository,
         );
 
-        let market_service = MarketService::new(market_repositories);
+        let market_service = MarketService::new(market_repositories.clone());
+        let order_service =
+            OrderService::new(order_repositories, wallet_repository, market_repositories);
 
-        let state = AppState::new(wallet_service, wallet_asset_service, market_service);
+        let state = AppState::new(
+            wallet_service,
+            wallet_asset_service,
+            market_service,
+            order_service,
+        );
 
         info!(
             application = %config.app_name,

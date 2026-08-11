@@ -89,6 +89,27 @@ pub enum AppError {
 
     #[error("Invalid market status")]
     InvalidMarketStatus,
+
+    #[error("Order was not found")]
+    OrderNotFound,
+
+    #[error("Order quantity must be greater than zero")]
+    InvalidOrderQuantity,
+
+    #[error("Order price must be greater than zero")]
+    InvalidOrderPrice,
+
+    #[error("Invalid order side")]
+    InvalidOrderSide,
+
+    #[error("Invalid order status")]
+    InvalidOrderStatus,
+
+    #[error("Order has already been processed")]
+    OrderAlreadyProcessed,
+
+    #[error("Order quantity must be a valid decimal number")]
+    InvalidOrderQuantityFormat,
 }
 
 #[derive(Debug, Serialize)]
@@ -251,6 +272,12 @@ impl IntoResponse for AppError {
                 "The market price has not been set",
             ),
 
+            AppError::InvalidOrderQuantityFormat => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_ORDER_QUANTITY_FORMAT",
+                "Order quantity must be a valid decimal string",
+            ),
+
             AppError::MarketAlreadyExists => (
                 StatusCode::CONFLICT,
                 "MARKET_ALREADY_EXISTS",
@@ -272,6 +299,46 @@ impl IntoResponse for AppError {
                     "An invalid market status was encountered",
                 )
             }
+
+            AppError::OrderNotFound => (
+                StatusCode::NOT_FOUND,
+                "ORDER_NOT_FOUND",
+                "Order was not found",
+            ),
+
+            AppError::InvalidOrderQuantity => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_ORDER_QUANTITY",
+                "Order quantity must be greater than zero",
+            ),
+
+            AppError::InvalidOrderPrice => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_ORDER_PRICE",
+                "Order price must be greater than zero",
+            ),
+
+            AppError::InvalidOrderSide => (
+                StatusCode::BAD_REQUEST,
+                "INVALID_ORDER_SIDE",
+                "Order side must be buy or sell",
+            ),
+
+            AppError::InvalidOrderStatus => {
+                error!("Invalid order status stored in database");
+
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INVALID_ORDER_STATUS",
+                    "Invalid order status was encountered",
+                )
+            }
+
+            AppError::OrderAlreadyProcessed => (
+                StatusCode::CONFLICT,
+                "ORDER_ALREADY_PROCESSED",
+                "Order has already been processed",
+            ),
 
             AppError::Database(database_error) => {
                 error!(

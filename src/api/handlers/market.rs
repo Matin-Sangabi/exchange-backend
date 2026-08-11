@@ -12,7 +12,7 @@ use crate::{
         AppState,
         dto::{
             CreateMarketRequest, MarketListResponse, MarketPriceResponse, MarketResponse,
-            SetMarketPriceRequest, market,
+            SetMarketPriceRequest,
         },
     },
     errors::AppError,
@@ -74,4 +74,12 @@ pub async fn get_market_price(
         price: price.to_string(),
         updated_at: market.updated_at(),
     }))
+}
+
+pub async fn get_price(
+    State(state): State<AppState>,
+    Path(symbol): Path<String>,
+) -> Result<Json<Decimal>, AppError> {
+    let price = state.market_service.get_price(symbol).await?;
+    Ok(Json(price))
 }

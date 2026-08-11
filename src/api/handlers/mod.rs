@@ -1,5 +1,6 @@
 pub mod health;
 pub mod market;
+pub mod order;
 pub mod wallet;
 pub mod wallet_asset;
 
@@ -13,4 +14,8 @@ pub use wallet_asset::{
     deposit_wallet_asset, get_wallet_asset, get_wallet_assets, withdraw_wallet_asset,
 };
 
-pub use market::{create_market, get_market, get_market_price, get_markets, set_market_price};
+pub use market::{
+    create_market, get_market, get_market_price, get_markets, get_price, set_market_price,
+};
+
+pub use order::{create_order, get_order, get_user_orders};

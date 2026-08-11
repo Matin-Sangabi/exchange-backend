@@ -42,7 +42,7 @@ impl MarketService {
     }
 
     pub async fn set_price(&self, symbol: String, price: Decimal) -> Result<Market, AppError> {
-        let symbol = normalize_market_symbol(symbol)?;
+        let symbol: String = normalize_market_symbol(symbol)?;
 
         let mut market = self
             .repository
