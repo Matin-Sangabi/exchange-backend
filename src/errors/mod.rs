@@ -110,6 +110,12 @@ pub enum AppError {
 
     #[error("Order quantity must be a valid decimal number")]
     InvalidOrderQuantityFormat,
+
+    #[error("Insufficient wallet balance")]
+    InsufficientBalance,
+
+    #[error("Insufficient asset balance")]
+    InsufficientAssetBalance,
 }
 
 #[derive(Debug, Serialize)]
@@ -247,6 +253,18 @@ impl IntoResponse for AppError {
                     "Wallet balance could not be updated",
                 )
             }
+
+            AppError::InsufficientBalance => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INSUFFICIENT_BALANCE",
+                "Wallet does not have enough balance",
+            ),
+
+            AppError::InsufficientAssetBalance => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "INSUFFICIENT_ASSET_BALANCE",
+                "Wallet does not have enough asset balance",
+            ),
 
             AppError::InvalidMarketSymbol => (
                 StatusCode::BAD_REQUEST,
