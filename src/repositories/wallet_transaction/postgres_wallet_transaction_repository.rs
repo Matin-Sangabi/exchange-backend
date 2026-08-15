@@ -32,6 +32,8 @@ impl TryFrom<WalletTransactionRow> for WalletTransaction {
         let transaction_type = match value.transaction_type.as_str() {
             "deposit" => WalletTransactionType::Deposit,
             "withdraw" => WalletTransactionType::WithDraw,
+            "trade" => WalletTransactionType::Trade,
+            "fee" => WalletTransactionType::Fee,
             _ => {
                 return Err(AppError::InvalidAmount);
             }

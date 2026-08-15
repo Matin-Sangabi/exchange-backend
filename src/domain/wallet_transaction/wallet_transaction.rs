@@ -8,6 +8,8 @@ use crate::errors::AppError;
 pub enum WalletTransactionType {
     Deposit,
     WithDraw,
+    Trade,
+    Fee,
 }
 
 impl WalletTransactionType {
@@ -15,6 +17,8 @@ impl WalletTransactionType {
         match self {
             Self::Deposit => "deposit",
             Self::WithDraw => "withdraw",
+            Self::Fee => "fee",
+            Self::Trade => "trade",
         }
     }
 }

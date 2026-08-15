@@ -17,6 +17,10 @@ pub struct CreateOrderRequest {
 pub struct OrderListQuery {
     pub page: Option<u32>,
     pub per_page: Option<u32>,
+
+    pub status: Option<String>,
+    pub side: Option<String>,
+    pub market: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
