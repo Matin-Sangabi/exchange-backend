@@ -63,6 +63,9 @@ pub struct Order {
     status: OrderStatus,
     quantity: Decimal,
     price: Decimal,
+    fee_percent: Option<Decimal>,
+    fee_amount: Option<Decimal>,
+    executed_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -102,6 +105,11 @@ impl Order {
             status: OrderStatus::Pending,
             quantity,
             price,
+
+            fee_percent: None,
+            fee_amount: None,
+            executed_at: None,
+
             created_at: now,
             updated_at: now,
         })
@@ -117,6 +125,11 @@ impl Order {
         status: OrderStatus,
         quantity: Decimal,
         price: Decimal,
+
+        fee_percent: Option<Decimal>,
+        fee_amount: Option<Decimal>,
+        executed_at: Option<DateTime<Utc>>,
+
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
     ) -> Self {
@@ -129,6 +142,9 @@ impl Order {
             status,
             quantity,
             price,
+            fee_percent,
+            fee_amount,
+            executed_at,
             created_at,
             updated_at,
         }
@@ -190,6 +206,18 @@ impl Order {
 
     pub fn price(&self) -> Decimal {
         self.price
+    }
+
+    pub fn fee_percent(&self) -> Option<Decimal> {
+        self.fee_percent
+    }
+
+    pub fn fee_amount(&self) -> Option<Decimal> {
+        self.fee_amount
+    }
+
+    pub fn executed_at(&self) -> Option<DateTime<Utc>> {
+        self.executed_at
     }
 
     pub fn created_at(&self) -> DateTime<Utc> {

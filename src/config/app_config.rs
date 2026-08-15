@@ -2,6 +2,8 @@ use std::str::FromStr;
 
 use anyhow::{Context, Result};
 
+use crate::config::trading::TradingConfig;
+
 use super::{database::DatabaseConfig, env::AppEnvironment, server::ServerConfig};
 
 #[derive(Debug, Clone)]
@@ -11,6 +13,7 @@ pub struct AppConfig {
     pub env: AppEnvironment,
     pub server: ServerConfig,
     pub database: DatabaseConfig,
+    pub trading: TradingConfig,
 }
 
 impl AppConfig {
@@ -29,11 +32,14 @@ impl AppConfig {
         let database =
             DatabaseConfig::from_env().context("Failed to load database configuration")?;
 
+        let trading = TradingConfig::from_env().context("Failed to load trading configuration")?;
+
         Ok(Self {
             app_name,
             env: environment,
             server,
             database,
+            trading,
         })
     }
 }

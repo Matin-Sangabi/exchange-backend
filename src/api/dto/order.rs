@@ -33,6 +33,10 @@ pub struct OrderResponse {
     pub price: String,
     pub total_value: String,
 
+    pub fee_percent: Option<String>,
+    pub fee_amount: Option<String>,
+    pub executed_at: Option<DateTime<Utc>>,
+
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -49,6 +53,9 @@ impl From<Order> for OrderResponse {
             quantity: value.quantity().to_string(),
             price: value.price().to_string(),
             total_value: value.total_value().to_string(),
+            fee_percent: value.fee_percent().map(|value| value.to_string()),
+            fee_amount: value.fee_amount().map(|value| value.to_string()),
+            executed_at: value.executed_at(),
             created_at: value.created_at(),
             updated_at: value.updated_at(),
         }

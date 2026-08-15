@@ -20,6 +20,9 @@ struct OrderRow {
     status: String,
     quantity: Decimal,
     price: Decimal,
+    fee_percent: Option<Decimal>,
+    fee_amount: Option<Decimal>,
+    executed_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -41,6 +44,9 @@ impl TryFrom<OrderRow> for Order {
             status,
             value.quantity,
             value.price,
+            value.fee_percent,
+            value.fee_amount,
+            value.executed_at,
             value.created_at,
             value.updated_at,
         ))
@@ -95,6 +101,9 @@ impl OrderRepository for PostgresOrderRepository {
                 status::text AS status,
                 quantity,
                 price,
+                fee_percent,
+                fee_amount,
+                executed_at,
                 created_at,
                 updated_at
             "#,
@@ -127,6 +136,9 @@ impl OrderRepository for PostgresOrderRepository {
                 status::text AS status,
                 quantity,
                 price,
+                fee_percent,
+                fee_amount,
+                executed_at,
                 created_at,
                 updated_at
             FROM orders
@@ -157,6 +169,9 @@ impl OrderRepository for PostgresOrderRepository {
                 status::text AS status,
                 quantity,
                 price,
+                fee_percent,
+                fee_amount,
+                executed_at,
                 created_at,
                 updated_at
             FROM orders
@@ -192,6 +207,9 @@ impl OrderRepository for PostgresOrderRepository {
                 status::text AS status,
                 quantity,
                 price,
+                fee_percent,
+                fee_amount,
+                executed_at,
                 created_at,
                 updated_at
             "#,

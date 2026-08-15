@@ -20,6 +20,11 @@ struct OrderExecutionRow {
     status: String,
     quantity: Decimal,
     price: Decimal,
+
+    fee_percent: Option<Decimal>,
+    fee_amount: Option<Decimal>,
+    executed_at: Option<DateTime<Utc>>,
+
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -47,11 +52,12 @@ struct WalletAssetExecutionRow {
 #[derive(Debug, Clone)]
 pub struct PostgresOrderExecutionRepository {
     pool: PgPool,
+    fee_percent: Decimal,
 }
 
 impl PostgresOrderExecutionRepository {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, fee_percent: Decimal) -> Self {
+        Self { pool, fee_percent }
     }
 
     async fn execute_in_transaction(
@@ -71,13 +77,15 @@ impl PostgresOrderExecutionRepository {
         let order_side = OrderSide::from_str(&order.side)?;
         let total_value = self.calculate_total_value(&order)?;
 
+        let fee = self.calculate_fee(total_value)?;
+
         match order_side {
             OrderSide::Buy => {
-                self.execute_buy(tx, &order, &wallet, &market, total_value)
+                self.execute_buy(tx, &order, &wallet, &market, total_value, fee)
                     .await?;
             }
             OrderSide::Sell => {
-                self.execute_sell(tx, &order, &wallet, &market, total_value)
+                self.execute_sell(tx, &order, &wallet, &market, total_value, fee)
                     .await?;
             }
         }
@@ -85,7 +93,9 @@ impl PostgresOrderExecutionRepository {
         println!("Order: {order:#?}");
         println!("Wallet: {wallet:#?}");
         println!("Market: {market:#?}");
-        let updated_order = self.update_order(tx, order_id).await?;
+        let updated_order = self
+            .mark_order_filled(tx, order_id, self.fee_percent, fee)
+            .await?;
 
         let domain_order = Self::map_order(updated_order)?;
 
@@ -105,6 +115,9 @@ impl PostgresOrderExecutionRepository {
             status,
             row.quantity,
             row.price,
+            row.fee_percent,
+            row.fee_amount,
+            row.executed_at,
             row.created_at,
             row.updated_at,
         ))
@@ -126,6 +139,9 @@ impl PostgresOrderExecutionRepository {
             status::text AS status,
             quantity,
             price,
+            fee_percent,
+            fee_amount,
+            executed_at,
             created_at,
             updated_at
         FROM orders
@@ -210,27 +226,49 @@ impl PostgresOrderExecutionRepository {
         wallet: &WalletExecutionRow,
         market: &MarketExecutionRow,
         total_value: Decimal,
+        fee: Decimal,
     ) -> Result<(), AppError> {
-        if wallet.cash_balance < total_value {
+        let final_amount = total_value
+            .checked_add(fee)
+            .ok_or(AppError::BalanceOverflow)?;
+
+        if wallet.cash_balance < final_amount {
             return Err(AppError::InsufficientBalance);
         }
-        let new_cash_balance = wallet
+
+        let balance_after_trade = wallet
             .cash_balance
             .checked_sub(total_value)
             .ok_or(AppError::InsufficientBalance)?;
 
-        self.update_cash_balance(tx, wallet.id, new_cash_balance)
+        let balance_after_fee = balance_after_trade
+            .checked_sub(fee)
+            .ok_or(AppError::InsufficientBalance)?;
+
+        self.update_cash_balance(tx, wallet.id, balance_after_fee)
             .await?;
 
         self.create_cash_transaction(
             tx,
             wallet.id,
-            "withdraw",
+            "trade",
             total_value,
             wallet.cash_balance,
-            new_cash_balance,
+            balance_after_trade,
             order.id,
-            format!("Buy order execution : {}", order.market_symbol),
+            format!("Buy order execution : {} ", order.market_symbol),
+        )
+        .await?;
+
+        self.create_cash_transaction(
+            tx,
+            wallet.id,
+            "fee",
+            fee,
+            balance_after_trade,
+            balance_after_fee,
+            order.id,
+            format!("Trading fee for buy order : {} ", order.market_symbol),
         )
         .await?;
 
@@ -270,6 +308,7 @@ impl PostgresOrderExecutionRepository {
         wallet: &WalletExecutionRow,
         market: &MarketExecutionRow,
         total_value: Decimal,
+        fee: Decimal,
     ) -> Result<(), AppError> {
         let asset = self
             .lock_existing_asset(tx, wallet.id, &market.base_asset)
@@ -301,21 +340,37 @@ impl PostgresOrderExecutionRepository {
         )
         .await?;
 
-        let new_cash_balance = wallet
+        let balance_after_trade = wallet
             .cash_balance
             .checked_add(total_value)
             .ok_or(AppError::BalanceOverflow)?;
 
-        self.update_cash_balance(tx, wallet.id, new_cash_balance)
+        let balance_after_fee = balance_after_trade
+            .checked_sub(fee)
+            .ok_or(AppError::BalanceOverflow)?;
+
+        self.update_cash_balance(tx, wallet.id, balance_after_fee)
             .await?;
 
         self.create_cash_transaction(
             tx,
             wallet.id,
-            "deposit",
+            "trade",
             total_value,
             wallet.cash_balance,
-            new_cash_balance,
+            balance_after_trade,
+            order.id,
+            format!("Sell order execution : {}", order.market_symbol),
+        )
+        .await?;
+
+        self.create_cash_transaction(
+            tx,
+            wallet.id,
+            "fee",
+            fee,
+            balance_after_trade,
+            balance_after_fee,
             order.id,
             format!("Sell order execution : {}", order.market_symbol),
         )
@@ -553,16 +608,21 @@ impl PostgresOrderExecutionRepository {
         Ok(asset)
     }
 
-    async fn update_order(
+    async fn mark_order_filled(
         &self,
         tx: &mut Transaction<'_, Postgres>,
         order_id: Uuid,
+        fee_percent: Decimal,
+        fee_amount: Decimal,
     ) -> Result<OrderExecutionRow, AppError> {
         let updated_order: OrderExecutionRow = sqlx::query_as::<_, OrderExecutionRow>(
             r#"
                 UPDATE orders
                 SET
                     status = 'filled'::order_status,
+                    fee_percent = $2,
+                    fee_amount = $3,
+                    executed_at = NOW(),
                     updated_at = NOW()
                 WHERE id = $1
                 RETURNING
@@ -574,11 +634,16 @@ impl PostgresOrderExecutionRepository {
                     status::text AS status,
                     quantity,
                     price,
+                    fee_percent,
+                    fee_amount,
+                    executed_at,
                     created_at,
                     updated_at
             "#,
         )
         .bind(order_id)
+        .bind(fee_percent)
+        .bind(fee_amount)
         .fetch_one(&mut **tx)
         .await?;
 
@@ -629,6 +694,15 @@ impl PostgresOrderExecutionRepository {
         let cancel_order = self.mark_order_cancelled(tx, order.id).await?;
 
         Self::map_order(cancel_order)
+    }
+
+    fn calculate_fee(&self, total_value: Decimal) -> Result<Decimal, AppError> {
+        let hundred = Decimal::new(100, 0);
+
+        total_value
+            .checked_mul(self.fee_percent)
+            .and_then(|value| value.checked_div(hundred))
+            .ok_or(AppError::InvalidOrderPrice)
     }
 }
 

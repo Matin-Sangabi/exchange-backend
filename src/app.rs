@@ -55,7 +55,10 @@ impl Application {
             Arc::new(PostgresOrderRepository::new(database_pool.clone()));
 
         let order_execute_repository: Arc<dyn OrderExecutionRepository> =
-            Arc::new(PostgresOrderExecutionRepository::new(database_pool.clone()));
+            Arc::new(PostgresOrderExecutionRepository::new(
+                database_pool.clone(),
+                config.trading.fee_percent,
+            ));
 
         let wallet_service = WalletService::new(
             database_pool.clone(),
