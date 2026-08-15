@@ -24,4 +24,11 @@ impl OrderExecutionService {
 
         self.repository.execute(order_id).await
     }
+
+    pub async fn cancel_order(&self, order_id: Uuid) -> Result<Order, AppError> {
+        if order_id.is_nil() {
+            return Err(AppError::OrderNotFound);
+        }
+        self.repository.cancel(order_id).await
+    }
 }

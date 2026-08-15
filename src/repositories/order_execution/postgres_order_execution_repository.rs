@@ -584,6 +584,52 @@ impl PostgresOrderExecutionRepository {
 
         Ok(updated_order)
     }
+
+    async fn mark_order_cancelled(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        order_id: Uuid,
+    ) -> Result<OrderExecutionRow, AppError> {
+        let order = sqlx::query_as::<_, OrderExecutionRow>(
+            r#"
+                UPDATE orders
+                SET
+                    status = 'cancelled'::order_status,
+                    updated_at = NOW()
+                WHERE id = $1
+                RETURNING
+                    id,
+                    user_id,
+                    wallet_id,
+                    market_symbol,
+                    side::text AS side,
+                    status::text AS status,
+                    quantity,
+                    price,
+                    created_at,
+                    updated_at
+            "#,
+        )
+        .bind(order_id)
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or(AppError::OrderNotFound)?;
+
+        Ok(order)
+    }
+
+    async fn cancel_in_transaction(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        order_id: Uuid,
+    ) -> Result<Order, AppError> {
+        let order = self.lock_order(tx, order_id).await?;
+        self.ensure_order_pending(&order)?;
+
+        let cancel_order = self.mark_order_cancelled(tx, order.id).await?;
+
+        Self::map_order(cancel_order)
+    }
 }
 
 #[async_trait]
@@ -592,6 +638,24 @@ impl OrderExecutionRepository for PostgresOrderExecutionRepository {
         let mut tx = self.pool.begin().await?;
 
         let result = self.execute_in_transaction(&mut tx, order_id).await;
+
+        match result {
+            Ok(order) => {
+                tx.commit().await?;
+                Ok(order)
+            }
+
+            Err(error) => {
+                tx.rollback().await?;
+                Err(error)
+            }
+        }
+    }
+
+    async fn cancel(&self, order_id: Uuid) -> Result<Order, AppError> {
+        let mut tx = self.pool.begin().await?;
+
+        let result = self.cancel_in_transaction(&mut tx, order_id).await;
 
         match result {
             Ok(order) => {

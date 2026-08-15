@@ -6,4 +6,6 @@ use crate::{domain::orders::Order, errors::AppError};
 #[async_trait]
 pub trait OrderExecutionRepository: Send + Sync {
     async fn execute(&self, order_id: Uuid) -> Result<Order, AppError>;
+
+    async fn cancel(&self, order_id: Uuid) -> Result<Order, AppError>;
 }
