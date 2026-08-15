@@ -149,6 +149,43 @@ impl PostgresOrderExecutionRepository {
                 .execute(&mut **tx)
                 .await?;
 
+                // wallet_transactions
+                sqlx::query(
+                    r#"
+                        INSERT INTO wallet_transactions (
+            id,
+            wallet_id,
+            transaction_type,
+            amount,
+            balance_before,
+            balance_after,
+            reference_id,
+            description,
+            created_at
+        )
+        VALUES (
+            $1,
+            $2,
+            'withdraw'::wallet_transaction_type,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            NOW()
+        )
+                    "#,
+                )
+                .bind(Uuid::new_v4())
+                .bind(wallet.id)
+                .bind(total_value)
+                .bind(wallet.cash_balance)
+                .bind(new_cash_balance)
+                .bind(order.id)
+                .bind(Some(format!("Order execution: {}", order.market_symbol)))
+                .execute(&mut **tx)
+                .await?;
+
                 // create into wallet
                 sqlx::query(
                     r#"
@@ -206,14 +243,247 @@ impl PostgresOrderExecutionRepository {
                 .bind(new_asset_balance)
                 .execute(&mut **tx)
                 .await?;
+
+                sqlx::query(
+                    r#"
+        INSERT INTO wallet_asset_transactions (
+            id,
+            wallet_id,
+            wallet_asset_id,
+            symbol,
+            transaction_type,
+            amount,
+            balance_before,
+            balance_after,
+            reference_id,
+            description,
+            created_at
+        )
+        VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            'deposit'::wallet_asset_transaction_type,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            NOW()
+        )
+        "#,
+                )
+                .bind(Uuid::new_v4())
+                .bind(wallet.id)
+                .bind(asset.id)
+                .bind(&market.base_asset)
+                .bind(order.quantity)
+                .bind(asset.balance)
+                .bind(new_asset_balance)
+                .bind(order.id)
+                .bind(Some(format!("Order execution: {}", order.market_symbol)))
+                .execute(&mut **tx)
+                .await?;
             }
-            OrderSide::Sell => {}
+            OrderSide::Sell => {
+                let asset = sqlx::query_as::<_, WalletAssetExecutionRow>(
+                    r#"
+    SELECT
+        id,
+        wallet_id,
+        symbol,
+        balance
+    FROM wallet_assets
+    WHERE wallet_id = $1
+      AND symbol = $2
+    FOR UPDATE
+    "#,
+                )
+                .bind(wallet.id)
+                .bind(&market.base_asset)
+                .fetch_optional(&mut **tx)
+                .await?
+                .ok_or(AppError::WalletAssetNotFound)?;
+                if asset.balance < order.quantity {
+                    return Err(AppError::InsufficientAssetBalance);
+                }
+
+                let new_asset_balance = asset
+                    .balance
+                    .checked_sub(order.quantity)
+                    .ok_or(AppError::InsufficientAssetBalance)?;
+
+                // update asset
+
+                sqlx::query(
+                    r#"
+    UPDATE wallet_assets
+    SET
+        balance = $2,
+        updated_at = NOW()
+    WHERE id = $1
+    "#,
+                )
+                .bind(asset.id)
+                .bind(new_asset_balance)
+                .execute(&mut **tx)
+                .await?;
+
+                // wallet asset transaction
+                sqlx::query(
+                    r#"
+    INSERT INTO wallet_asset_transactions (
+        id,
+        wallet_id,
+        wallet_asset_id,
+        symbol,
+        transaction_type,
+        amount,
+        balance_before,
+        balance_after,
+        reference_id,
+        description,
+        created_at
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        'withdraw'::wallet_asset_transaction_type,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        NOW()
+    )
+    "#,
+                )
+                .bind(Uuid::new_v4())
+                .bind(wallet.id)
+                .bind(asset.id)
+                .bind(&market.base_asset)
+                .bind(order.quantity)
+                .bind(asset.balance)
+                .bind(new_asset_balance)
+                .bind(order.id)
+                .bind(Some(format!(
+                    "Sell order execution: {}",
+                    order.market_symbol
+                )))
+                .execute(&mut **tx)
+                .await?;
+
+                let new_cash_balance = wallet
+                    .cash_balance
+                    .checked_add(total_value)
+                    .ok_or(AppError::BalanceOverflow)?;
+
+                sqlx::query(
+                    r#"
+    UPDATE wallets
+    SET
+        cash_balance = $2,
+        updated_at = NOW()
+    WHERE id = $1
+    "#,
+                )
+                .bind(wallet.id)
+                .bind(new_cash_balance)
+                .execute(&mut **tx)
+                .await?;
+
+                sqlx::query(
+                    r#"
+    INSERT INTO wallet_transactions (
+        id,
+        wallet_id,
+        transaction_type,
+        amount,
+        balance_before,
+        balance_after,
+        reference_id,
+        description,
+        created_at
+    )
+    VALUES (
+        $1,
+        $2,
+        'deposit'::wallet_transaction_type,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        NOW()
+    )
+    "#,
+                )
+                .bind(Uuid::new_v4())
+                .bind(wallet.id)
+                .bind(total_value)
+                .bind(wallet.cash_balance)
+                .bind(new_cash_balance)
+                .bind(order.id)
+                .bind(Some(format!(
+                    "Sell order execution: {}",
+                    order.market_symbol
+                )))
+                .execute(&mut **tx)
+                .await?;
+            }
         }
 
         println!("Order: {order:#?}");
         println!("Wallet: {wallet:#?}");
         println!("Market: {market:#?}");
-        todo!()
+        let updated_order = sqlx::query_as::<_, OrderExecutionRow>(
+            r#"
+    UPDATE orders
+    SET
+        status = 'filled'::order_status,
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING
+        id,
+        user_id,
+        wallet_id,
+        market_symbol,
+        side::text AS side,
+        status::text AS status,
+        quantity,
+        price,
+        created_at,
+        updated_at
+    "#,
+        )
+        .bind(order.id)
+        .fetch_one(&mut **tx)
+        .await?;
+
+        let domain_order = Self::map_order(updated_order)?;
+
+        Ok(domain_order)
+    }
+
+    fn map_order(row: OrderExecutionRow) -> Result<Order, AppError> {
+        let side = OrderSide::from_str(&row.side)?;
+        let status = OrderStatus::from_str(&row.status)?;
+
+        Ok(Order::restore(
+            row.id,
+            row.user_id,
+            row.wallet_id,
+            row.market_symbol,
+            side,
+            status,
+            row.quantity,
+            row.price,
+            row.created_at,
+            row.updated_at,
+        ))
     }
 }
 

@@ -110,12 +110,6 @@ pub enum AppError {
 
     #[error("Order quantity must be a valid decimal number")]
     InvalidOrderQuantityFormat,
-
-    #[error("Insufficient wallet balance")]
-    InsufficientBalance,
-
-    #[error("Insufficient asset balance")]
-    InsufficientAssetBalance,
 }
 
 #[derive(Debug, Serialize)]

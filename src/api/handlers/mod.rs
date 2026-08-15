@@ -18,4 +18,4 @@ pub use market::{
     create_market, get_market, get_market_price, get_markets, get_price, set_market_price,
 };
 
-pub use order::{create_order, get_order, get_user_orders};
+pub use order::{create_order, get_order, get_user_orders , execute_order};

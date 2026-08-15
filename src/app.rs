@@ -11,12 +11,15 @@ use crate::{
     database::{check_database_health, create_database_pool, migrations::run_migrations},
     repositories::{
         market::{MarketRepository, PostgresMarketRepository},
+        order_execution::{OrderExecutionRepository, PostgresOrderExecutionRepository},
         orders::{OrderRepository, PostgresOrderRepository},
         wallet::{PostgresWalletRepository, WalletRepository},
         wallet_asset::{PostgresWalletAssetRepository, WalletAssetRepository},
         wallet_transaction::{PostgresWalletTransactionRepository, WalletTransactionRepository},
     },
-    services::{MarketService, OrderService, WalletAssetService, WalletService},
+    services::{
+        MarketService, OrderExecutionService, OrderService, WalletAssetService, WalletService,
+    },
 };
 
 pub struct Application {
@@ -51,6 +54,9 @@ impl Application {
         let order_repositories: Arc<dyn OrderRepository> =
             Arc::new(PostgresOrderRepository::new(database_pool.clone()));
 
+        let order_execute_repository: Arc<dyn OrderExecutionRepository> =
+            Arc::new(PostgresOrderExecutionRepository::new(database_pool.clone()));
+
         let wallet_service = WalletService::new(
             database_pool.clone(),
             wallet_repository.clone(),
@@ -67,11 +73,14 @@ impl Application {
         let order_service =
             OrderService::new(order_repositories, wallet_repository, market_repositories);
 
+        let order_execute_service = OrderExecutionService::new(order_execute_repository);
+
         let state = AppState::new(
             wallet_service,
             wallet_asset_service,
             market_service,
             order_service,
+            order_execute_service,
         );
 
         info!(

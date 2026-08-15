@@ -1,2 +1,5 @@
 pub mod order_execution_repository;
 pub mod postgres_order_execution_repository;
+
+pub use order_execution_repository::OrderExecutionRepository;
+pub use postgres_order_execution_repository::PostgresOrderExecutionRepository;

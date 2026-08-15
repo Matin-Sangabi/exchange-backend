@@ -68,3 +68,11 @@ pub async fn get_user_orders(
 
     Ok(Json(OrderListResponse { items }))
 }
+
+pub async fn execute_order(
+    State(state): State<AppState>,
+    Path(order_id): Path<Uuid>,
+) -> Result<Json<OrderResponse>, AppError> {
+    let order = state.order_execute_service.execute_order(order_id).await?;
+    Ok(Json(order.into()))
+}

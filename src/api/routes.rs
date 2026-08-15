@@ -7,10 +7,10 @@ use tower_http::trace::TraceLayer;
 
 use crate::api::{
     handlers::{
-        create_market, create_order, create_wallet, deposit, deposit_wallet_asset, get_market,
-        get_market_price, get_markets, get_order, get_price, get_user_orders, get_wallet_asset,
-        get_wallet_assets, get_wallet_by_id, get_wallet_by_user_id, get_wallet_transaction, health,
-        set_market_price, withdraw, withdraw_wallet_asset,
+        create_market, create_order, create_wallet, deposit, deposit_wallet_asset, execute_order,
+        get_market, get_market_price, get_markets, get_order, get_price, get_user_orders,
+        get_wallet_asset, get_wallet_assets, get_wallet_by_id, get_wallet_by_user_id,
+        get_wallet_transaction, health, set_market_price, withdraw, withdraw_wallet_asset,
     },
     state::AppState,
 };
@@ -49,7 +49,8 @@ pub fn create_router(state: AppState) -> Router {
     let order_routes = Router::new()
         .route("/orders", post(create_order))
         .route("/orders/{order_id}", get(get_order))
-        .route("/orders/user/{user_id}", get(get_user_orders));
+        .route("/orders/user/{user_id}", get(get_user_orders))
+        .route("/orders/{order_id}/execute", post(execute_order));
 
     Router::new()
         .route("/health", get(health))
