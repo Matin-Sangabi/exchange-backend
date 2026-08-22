@@ -93,6 +93,7 @@ impl PostgresOrderExecutionRepository {
         println!("Order: {order:#?}");
         println!("Wallet: {wallet:#?}");
         println!("Market: {market:#?}");
+        self.create_trade(tx, &order, fee).await?;
         let updated_order = self
             .mark_order_filled(tx, order_id, self.fee_percent, fee)
             .await?;
@@ -703,6 +704,66 @@ impl PostgresOrderExecutionRepository {
             .checked_mul(self.fee_percent)
             .and_then(|value| value.checked_div(hundred))
             .ok_or(AppError::InvalidOrderPrice)
+    }
+
+    async fn create_trade(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        order: &OrderExecutionRow,
+        fee_amount: Decimal,
+    ) -> Result<(), AppError> {
+        let quote_amount = order
+            .price
+            .checked_mul(order.quantity)
+            .ok_or(AppError::InvalidOrderPrice)?;
+
+        sqlx::query(
+            r#"
+        INSERT INTO trades (
+            id,
+            order_id,
+            user_id,
+            wallet_id,
+            market_symbol,
+            side,
+            price,
+            quantity,
+            quote_amount,
+            fee_amount,
+            fee_percent,
+            executed_at
+        )
+        VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6::order_side,
+            $7,
+            $8,
+            $9,
+            $10,
+            $11,
+            NOW()
+        )
+        "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(order.id)
+        .bind(order.user_id)
+        .bind(order.wallet_id)
+        .bind(&order.market_symbol)
+        .bind(&order.side)
+        .bind(order.price)
+        .bind(order.quantity)
+        .bind(quote_amount)
+        .bind(fee_amount)
+        .bind(self.fee_percent)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
     }
 }
 

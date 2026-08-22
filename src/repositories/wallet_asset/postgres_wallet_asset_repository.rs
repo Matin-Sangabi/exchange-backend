@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use sqlx::{PgConnection, PgPool, postgres::PgConnectOptions, prelude::FromRow};
+use sqlx::{PgConnection, PgPool, prelude::FromRow};
 use uuid::Uuid;
 
 use crate::{

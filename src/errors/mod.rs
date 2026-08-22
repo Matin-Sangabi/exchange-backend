@@ -51,9 +51,6 @@ pub enum AppError {
     #[error("The transaction reference already exists")]
     DuplicateTransactionReference,
 
-    #[error("Wallet transaction not found")]
-    WalletTransactionNotFound,
-
     #[error("Asset symbol is invalid")]
     InvalidAssetSymbol,
 
@@ -78,9 +75,6 @@ pub enum AppError {
     #[error("Market price must be greater than zero")]
     InvalidMarketPrice,
 
-    #[error("Market price has not been set")]
-    MarketPriceNotSet,
-
     #[error("Market already exists")]
     MarketAlreadyExists,
 
@@ -98,6 +92,9 @@ pub enum AppError {
 
     #[error("Order price must be greater than zero")]
     InvalidOrderPrice,
+
+    #[error("This trade not found")]
+    TradeNotFound,
 
     #[error("Invalid order side")]
     InvalidOrderSide,
@@ -198,12 +195,6 @@ impl IntoResponse for AppError {
                 "This financial operation has already been processed",
             ),
 
-            AppError::WalletTransactionNotFound => (
-                StatusCode::NOT_FOUND,
-                "WALLET_TRANSACTION_NOT_FOUND",
-                "Wallet transaction was not found",
-            ),
-
             AppError::InvalidAssetSymbol => (
                 StatusCode::BAD_REQUEST,
                 "INVALID_ASSET_SYMBOL",
@@ -248,22 +239,16 @@ impl IntoResponse for AppError {
                 )
             }
 
-            AppError::InsufficientBalance => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "INSUFFICIENT_BALANCE",
-                "Wallet does not have enough balance",
-            ),
-
-            AppError::InsufficientAssetBalance => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "INSUFFICIENT_ASSET_BALANCE",
-                "Wallet does not have enough asset balance",
-            ),
-
             AppError::InvalidMarketSymbol => (
                 StatusCode::BAD_REQUEST,
                 "INVALID_MARKET_SYMBOL",
                 "Market assets must contain valid alphanumeric symbols",
+            ),
+
+            AppError::TradeNotFound => (
+                StatusCode::NOT_FOUND,
+                "TRADE_NOT_FOUND",
+                "Trade id not found",
             ),
 
             AppError::SameMarketAssets => (
@@ -276,12 +261,6 @@ impl IntoResponse for AppError {
                 StatusCode::BAD_REQUEST,
                 "INVALID_MARKET_PRICE",
                 "Market price must be greater than zero",
-            ),
-
-            AppError::MarketPriceNotSet => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "MARKET_PRICE_NOT_SET",
-                "The market price has not been set",
             ),
 
             AppError::InvalidOrderQuantityFormat => (

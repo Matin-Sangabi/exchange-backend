@@ -1,5 +1,6 @@
 use crate::services::{
-    MarketService, OrderExecutionService, OrderService, WalletAssetService, WalletService,
+    MarketService, OrderExecutionService, OrderService, TradeService, WalletAssetService,
+    WalletService,
 };
 
 #[derive(Clone)]
@@ -9,6 +10,7 @@ pub struct AppState {
     pub market_service: MarketService,
     pub order_service: OrderService,
     pub order_execute_service: OrderExecutionService,
+    pub trade_service: TradeService,
 }
 
 impl AppState {
@@ -18,6 +20,7 @@ impl AppState {
         market_service: MarketService,
         order_service: OrderService,
         order_execute_service: OrderExecutionService,
+        trade_service: TradeService,
     ) -> Self {
         Self {
             wallet_service,
@@ -25,6 +28,7 @@ impl AppState {
             market_service,
             order_service,
             order_execute_service,
+            trade_service,
         }
     }
 }

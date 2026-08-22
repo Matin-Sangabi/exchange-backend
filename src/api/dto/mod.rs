@@ -1,5 +1,6 @@
 pub mod market;
 pub mod order;
+pub mod trade;
 pub mod wallet;
 pub mod wallet_asset;
 
@@ -15,4 +16,8 @@ pub use market::{
     SetMarketPriceRequest,
 };
 
-pub use order::{CreateOrderRequest, OrderListQuery, OrderListResponse, OrderResponse};
+pub use order::{
+    CreateOrderRequest, OrderListQuery, OrderListResponse, OrderResponse, OrderStatsResponse,
+};
+
+pub use trade::{TradeListQuery, TradeListResponse, TradeResponse};

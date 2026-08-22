@@ -13,12 +13,14 @@ use crate::{
         market::{MarketRepository, PostgresMarketRepository},
         order_execution::{OrderExecutionRepository, PostgresOrderExecutionRepository},
         orders::{OrderRepository, PostgresOrderRepository},
+        trades::{PostgresTradeRepository, TradeRepository, trade_repository},
         wallet::{PostgresWalletRepository, WalletRepository},
         wallet_asset::{PostgresWalletAssetRepository, WalletAssetRepository},
         wallet_transaction::{PostgresWalletTransactionRepository, WalletTransactionRepository},
     },
     services::{
-        MarketService, OrderExecutionService, OrderService, WalletAssetService, WalletService,
+        MarketService, OrderExecutionService, OrderService, TradeService, WalletAssetService,
+        WalletService,
     },
 };
 
@@ -60,6 +62,9 @@ impl Application {
                 config.trading.fee_percent,
             ));
 
+        let trade_repository: Arc<dyn TradeRepository> =
+            Arc::new(PostgresTradeRepository::new(database_pool.clone()));
+
         let wallet_service = WalletService::new(
             database_pool.clone(),
             wallet_repository.clone(),
@@ -77,6 +82,7 @@ impl Application {
             OrderService::new(order_repositories, wallet_repository, market_repositories);
 
         let order_execute_service = OrderExecutionService::new(order_execute_repository);
+        let trader_service = TradeService::new(trade_repository);
 
         let state = AppState::new(
             wallet_service,
@@ -84,6 +90,7 @@ impl Application {
             market_service,
             order_service,
             order_execute_service,
+            trader_service,
         );
 
         info!(
